@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JARVIS Voice Launcher</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;background:#07111e;color:#e7faff;
+  font-family:Arial,sans-serif;text-align:center;
+}
+.container{max-width:600px;margin:auto;padding:22px}
+h1{color:#00e5ff;letter-spacing:3px}
+.arc{
+  width:155px;height:155px;border-radius:50%;
+  border:3px solid #00e5ff;
+  box-shadow:0 0 25px #00bcd4;
+  display:grid;place-items:center;margin:25px auto;
+  font-size:42px;transition:.3s;
+}
+.arc.active{animation:pulse 1.2s infinite}
+@keyframes pulse{
+  50%{box-shadow:0 0 45px #00e5ff;transform:scale(1.04)}
+}
+button{
+  padding:13px;margin:6px;border:1px solid #00e5ff;
+  border-radius:10px;background:#10273a;color:white;
+  font-size:15px;cursor:pointer;
+}
+button:active{background:#006c86}
+#status{color:#00e5ff;min-height:24px}
+#output{
+  background:#102033;border-radius:12px;padding:16px;
+  text-align:left;min-height:80px;overflow-wrap:anywhere;
+}
+.grid{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:9px;
+  margin-top:20px;
+}
+.grid button{margin:0}
+input{
+  width:100%;padding:13px;margin-top:10px;
+  border-radius:8px;border:1px solid #00e5ff;
+  background:#102033;color:white;
+}
+small{color:#9bb7c6}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <h1>J.A.R.V.I.S</h1>
+  <p>Advanced Voice App Launcher</p>
+
+  <div class="arc" id="arc">◉</div>
+  <p id="status">SYSTEM READY</p>
+
+  <button onclick="startListening()">🎙 START VOICE</button>
+  <button onclick="stopListening()">⏹ STOP</button>
+
+  <div id="output">
+    <b>JARVIS:</b> Hello Boss. Say "Open YouTube".
+  </div>
+
+  <div class="grid">
+    <button onclick="launchApp('youtube')">▶ YouTube</button>
+    <button onclick="launchApp('whatsapp')">💬 WhatsApp</button>
+    <button onclick="launchApp('instagram')">📸 Instagram</button>
+    <button onclick="launchApp('facebook')">👥 Facebook</button>
+    <button onclick="launchApp('maps')">📍 Google Maps</button>
+    <button onclick="launchApp('gmail')">✉ Gmail</button>
+    <button onclick="launchApp('chrome')">🌐 Chrome</button>
+    <button onclick="launchApp('playstore')">▶ Play Store</button>
+  </div>
+
+  <h3>Custom App URL</h3>
+  <input id="appName" placeholder="App name e.g. Spotify">
+  <input id="appUrl" placeholder="App URL e.g. https://open.spotify.com">
+  <button onclick="saveCustomApp()">ADD APP</button>
+
+  <p><small>
+    Voice commands: Open YouTube, WhatsApp open chey,
+    time cheppu, stop listening.
+  </small></p>
+</div>
+
+<script>
+"use strict";
+
+// JARVIS Voice Launcher
+const $ = id => document.getElementById(id);
+let recognition = null;
+let listening = false;
+
+const apps = {
+  youtube: "https://www.youtube.com/",
+  whatsapp: "https://wa.me/",
+  instagram: "https://www.instagram.com/",
+  facebook: "https://www.facebook.com/",
+  maps: "https://maps.google.com/",
+  gmail: "https://mail.google.com/",
+  chrome: "https://www.google.com/chrome/",
+  playstore: "https://play.google.com/store",
+  spotify: "https://open.spotify.com/",
+  telegram: "https://web.telegram.org/",
+  github: "https://github.com/",
+  chatgpt: "https://chatgpt.com/",
+  gemini: "https://gemini.google.com/",
+  google: "https://www.google.com/",
+  amazon: "https://www.amazon.in/",
+  flipkart: "https://www.flipkart.com/"
+};
+
+function say(text) {
+  $("output").innerHTML = "";
+  const label = document.createElement("b");
+  label.textContent = "JARVIS: ";
+  const message = document.createElement("span");
+  message.textContent = text;
+  $("output").append(label, message);
+
+  if ("speechSynthesis" in window) {
+    speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-IN";
+    utterance.rate = 1;
+    speechSynthesis.speak(utterance);
+  }
+}
+
+function setStatus(text, active = false) {
+  $("status").textContent = text;
+  $("arc").classList.toggle("active", active);
+}
+
+function launchApp(name) {
+  name = name.toLowerCase().trim();
+  const url = apps[name];
+
+  if (!url) {
+    say("Boss, app URL not found. Add the app first.");
+    return;
+  }
+
+  say("Opening " + name);
+  setStatus("LAUNCHING: " + name.toUpperCase());
+
+  // Websites open in the browser. The OS may offer
+  // an installed app when a supported app link is used.
+  window.location.assign(url);
+}
+
+function saveCustomApp() {
+  const name = $("appName").value.trim().toLowerCase();
+  const url = $("appUrl").value.trim();
+
+  if (!/^[a-z0-9 _-]+$/.test(name)) {
+    say("Please enter a valid app name.");
+    return;
+  }
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== "https:" &&
+        parsed.protocol !== "http:") {
+      say("Only HTTP or HTTPS URLs are supported.");
+      return;
+    }
+
+    apps[name] = parsed.href;
+    say(name + " added successfully.");
+    $("appName").value = "";
+    $("appUrl").value = "";
+  } catch {
+    say("Please enter a valid website URL.");
+  }
+}
+
+const SpeechRecognition =
+  window.SpeechRecognition ||
+  window.webkitSpeechRecognition;
+
+if (SpeechRecognition) {
+  recognition = new SpeechRecognition();
+  recognition.lang = "en-IN";
+  recognition.continuous = true;
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+    listening = true;
+    setStatus("LISTENING FOR COMMANDS...", true);
+  };
+
+  recognition.onresult = event => {
+    const result =
+      event.results[event.results.length - 1];
+    if (!result.isFinal) return;
+
+    const command = result[0].transcript
+      .toLowerCase().trim();
+
+    say("Command received: " + command);
+    handleCommand(command);
+  };
+
+  recognition.onerror = event => {
+    setStatus("VOICE ERROR: " + event.error);
+    if (event.error === "not-allowed") {
+      listening = false;
+      say("Please allow microphone permission.");
+    }
+  };
+
+  recognition.onend = () => {
+    listening = false;
+    $("arc").classList.remove("active");
+    setStatus("VOICE SESSION ENDED");
+  };
+} else {
+  setStatus("Speech recognition unsupported");
+}
+
+function startListening() {
+  if (!recognition) {
+    say("Please use a supported browser such as Chrome.");
+    return;
+  }
+
+  if (!listening) {
+    try {
+      recognition.start();
+    } catch (error) {
+      setStatus("Could not start voice recognition.");
+    }
+  }
+}
+
+function stopListening() {
+  if (recognition && listening) recognition.stop();
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  listening = false;
+  setStatus("SYSTEM STOPPED");
+}
+
+function handleCommand(command) {
+  const normalized = command
+    .replace(/[.,!?]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (/\b(stop listening|stop voice|voice stop)\b/.test(normalized)) {
+    stopListening();
+    say("Voice listening stopped, Boss.");
+    return;
+  }
+
+  if (/\b(time|time cheppu|what time)\b/.test(normalized)) {
+    say("The time is " +
+      new Date().toLocaleTimeString("en-IN", {
+        hour: "numeric", minute: "2-digit"
+      }));
+    return;
+  }
+
+  if (/\b(date|today date|date cheppu)\b/.test(normalized)) {
+    say("Today is " +
+      new Date().toLocaleDateString("en-IN", {
+        day: "numeric", month: "long", year: "numeric"
+      }));
+    return;
+  }
+
+  if (/\b(hello|hi jarvis|hey jarvis)\b/.test(normalized)) {
+    say("Hello Boss. I am ready.");
+    return;
+  }
+
+  if (/\b(help|commands)\b/.test(normalized)) {
+    say("Say open YouTube, open WhatsApp, open maps, time, or date.");
+    return;
+  }
+
+  const match = normalized.match(
+    /^(?:jarvis\s+)?(?:please\s+)?(?:open|launch|start|play|ఓపెన్)\s+(.+)$/
+  );
+
+  if (match) {
+    let name = match[1].trim()
+      .replace(/\s+(app|application)$/, "");
+
+    const aliases = {
+      "you tube": "youtube",
+      "whats app": "whatsapp",
+      "వాట్సాప్": "whatsapp",
+      "యూట్యూబ్": "youtube",
+      "ఇన్‌స్టాగ్రామ్": "instagram",
+      "గూగుల్ మ్యాప్స్": "maps",
+      "గూగుల్": "google",
+      "చాట్ జిపిటి": "chatgpt",
+      "జెమిని": "gemini"
+    };
+
+    name = aliases[name] || name;
+
+    if (apps[name]) {
+      launchApp(name);
+    } else {
+      say("Boss, I do not know the app named " + name);
+    }
+    return;
+  }
+
+  say("Command not recognized. Say open YouTube or help.");
+}
+
+// App links use HTTPS for compatibility.
+// Add your own known website URLs in the apps object.
+</script>
+</body>
+</html>
